@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --exec ts-node server.ts",
+    "build": "npx prisma migrate deploy && tsc",
     "start": "node dist/server.js", 
     "seed": "ts-node prisma/seed.ts"
   },
