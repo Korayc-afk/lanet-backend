@@ -70,22 +70,22 @@ app.use('/', robotsRoute);
 // Render kendi PORT env'ini verir; local fallback 5000
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 
-// ❗❗ TEK KEZ listen ❗❗
-const server = app.listen(PORT, () => {
-  console.log(`✅ API listening on port ${PORT}`);
-  console.log('✅ Tüm API rotaları aktif!');
-  console.log('✅ Statik dosyalar aktif!');
-});
+if (!module.parent) {
+  const server = app.listen(PORT, () => {
+    console.log(`✅ API listening on port ${PORT}`);
+    console.log("✅ Tüm API rotaları aktif!");
+    console.log("✅ Statik dosyalar aktif!");
+  });
 
-// ---- Hata yakalama ----
-server.on('error', (err: NodeJS.ErrnoException) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} kullanımda.`);
-  } else {
-    console.error('❌ Sunucu hatası:', err.message);
-  }
-  process.exit(1);
-});
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`❌ Port ${PORT} kullanımda.`);
+    } else {
+      console.error("❌ Sunucu hatası:", err.message);
+    }
+    process.exit(1);
+  });
+}
 
 process.on('unhandledRejection', (reason) => {
   console.error('❌ Yakalanmamış Promise Reddi:', reason);
