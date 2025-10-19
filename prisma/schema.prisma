@@ -1,0 +1,200 @@
+generator client {
+  provider        = "prisma-client-js"
+  // Mevcut ortam (windows) ve Canlı ortam (Linux) hedefini ekle
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"] 
+}
+
+// Aşağıdaki diğer 'datasource' veya 'model' bloklarına dokunmayın
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+enum Role {
+  ADMIN
+  MODERATOR
+  USER
+}
+
+
+model User {
+  id                   Int             @id @default(autoincrement())
+  username             String          @unique
+  email                String          @unique
+  password             String
+  role                 Role            @default(USER)
+  isEmailVerified      Boolean         @default(false)
+  lastLoginAt          DateTime?
+  isBanned             Boolean         @default(false)
+  banReason            String?
+  bannedUntil          DateTime?
+  customBonus          String?
+  level                Int             @default(1)
+  firstName            String?
+  lastName             String?
+  phone                String?
+  telegram             String?
+  referralCode         String?         @unique   // Kendi kodu
+  referredBy           String?                    // Katıldığı kod
+  joinedReferralOwner  String?                    // Katıldığı kodun sahibi
+
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+
+
+model Notification {
+  id           Int      @id @default(autoincrement())
+  title        String
+  message      String
+  targetUserId Int?     // Hedef kullanıcı ID'si (null ise tüm kullanıcılara)
+  targetRole   Role? 
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user         User?    @relation(fields: [targetUserId], references: [id]) // User ile ilişki
+
+  @@map("notifications")
+}
+
+
+model Slider {
+  id        Int      @id @default(autoincrement())
+  title     String
+  imageUrl  String
+  createdAt DateTime @default(now())
+}
+
+model FooterLink {
+  id        Int      @id @default(autoincrement())
+  widget    Int      @default(1)
+  title     String
+  url       String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Settings {
+  id                    Int      @id @default(autoincrement())
+  siteTitle             String?  @map("site_title")
+  seoDescription        String?  @map("seo_description")
+  footerText            String?  @map("footer_text")
+  siteLogoUrl           String?  @map("site_logo_url")
+  faviconUrl            String?  @map("favicon_url")
+  maintenanceMode       Boolean? @default(false) 
+  popupText             String?  @map("popup_text")
+
+  googleAnalyticsId     String?  @map("google_analytics_id")
+  allowSearchEngines    Boolean? @default(true) @map("allow_search_engines")
+
+  facebookLink          String?  @map("facebook_link")
+  facebookText          String?  @map("facebook_text") 
+  instagramLink         String?  @map("instagram_link")
+  instagramText         String?  @map("instagram_text")
+  telegramLink          String?  @map("telegram_link")
+  telegramText          String?  @map("telegram_text")
+  youtubeLink           String?  @map("youtube_link")
+  youtubeText           String?  @map("youtube_text")
+  whatsappLink          String?  @map("whatsapp_link")
+  whatsappText          String?  @map("whatsapp_text")
+  skypeLink             String?  @map("skype_link")
+  skypeText             String?  @map("skype_text")
+  twitterLink           String?  @map("twitter_link")
+  twitterText           String?  @map("twitter_text")
+  helpLink              String?  @map("help_link")
+  helpText              String?  @map("help_text")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  heroVideoUrl       String?
+  heroVideoThumbnail String?
+
+  @@map("site_settings")
+}
+
+model Marquee {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String   // Logo görseli (S3 veya local path)
+  linkUrl   String   // Tıklanınca gidilecek link
+  order     Int      // Sıralama
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model MainCard {
+  id        Int     @id @default(autoincrement())
+  href      String
+  imageSrc  String
+  logoSrc   String
+  badgeText String
+  order     Int     @default(0)
+  isActive  Boolean @default(true)
+}
+
+model PartnerBrand {
+  id        Int      @id @default(autoincrement())
+  name      String
+  imageUrl  String
+  linkUrl   String
+  order     Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Sponsor {
+  id          Int      @id @default(autoincrement()) // ✅ düzeltildi
+  name        String
+  title       String
+  description String
+  buttonText  String
+  buttonUrl   String
+  imageUrl    String
+  logoUrl     String
+  order       Int
+  isActive    Boolean  @default(true)
+  isMain      Boolean  @default(false) // 🏆 Ana sponsor mu?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PromotionCard {
+  id              Int      @id @default(autoincrement())
+  type            String   // "BONUS" | "MINI" gibi ayrım için
+  title           String
+  description     String
+  image           String   // Bonus kartlar için
+  modalTitle      String
+  modalDescription String @db.Text
+  modalImage      String
+  date            DateTime?  // Opsiyonel: Bonus tarihleri için
+  promotionLink   String?
+  order           Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+
+model VideoCard {
+  id        Int      @id @default(autoincrement())
+  title     String
+  videoUrl  String
+  imageUrl  String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true) // ➕ bu alan eklendi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
