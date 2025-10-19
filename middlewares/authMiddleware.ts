@@ -1,15 +1,12 @@
-// src/middleware/authMiddleware.ts (GÜNCEL HALİ)
+// src/middleware/authMiddleware.ts (DÜZENLENMİŞ HALİ)
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 
-dotenv.config();
+// ✅ dotenv kaldırıldı — artık server.ts içinde global olarak yükleniyor
 
 // JWT secret key'inizi buraya veya çevre değişkenlerine ekleyin
 const JWT_SECRET = process.env.JWT_SECRET || "supergizli_anahtar123";
- // Lütfen bunu gerçek bir secret key ile değiştirin!
-
-// 🎉 Express Request tipini genişletiyoruz ki, middleware'den sonra req.user erişilebilir olsun
+// Lütfen bunu gerçek bir secret key ile değiştirin!
 
 console.log("🔐 authenticateToken middleware çalıştı");
 
@@ -37,13 +34,12 @@ export const authenticateToken = (
 
   jwt.verify(token, JWT_SECRET, (err, userPayload) => {
     if (err) {
-      console.error("JWT doğrulama hatası:", err.name, err.message); // 👈 daha fazla detay
+      console.error("JWT doğrulama hatası:", err.name, err.message);
       return res
         .status(403)
         .json({ message: "Geçersiz veya süresi dolmuş token." });
     }
 
-    // userPayload'ın beklenen yapıda olduğundan emin olun
     if (
       typeof userPayload !== "object" ||
       userPayload === null ||
@@ -53,7 +49,6 @@ export const authenticateToken = (
       return res.status(403).json({ message: "Geçersiz token formatı." });
     }
 
-    // 🎉 req.user'a doğru tipte atama yapın
     req.user = userPayload as Express.Request["user"];
     next();
   });

@@ -1,19 +1,17 @@
-import { Router, Request, Response, NextFunction } from 'express';
+// src/routes/auth.ts
+import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
-import bcrypt from "bcryptjs"; // bcryptjs import edildi
-import jwt from "jsonwebtoken";
-import { v4 as uuidv4 } from "uuid";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middlewares/authMiddleware';
-import { Role } from "@prisma/client";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-
+import { Role } from '@prisma/client';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "supergizli_anahtar123";
 
+// Render/Prod'da ENV üzerinden gelecek, local geliştirmede fallback olsa da
+// prod'da mutlaka ENV ile ver.
+const JWT_SECRET = process.env.JWT_SECRET || 'supergizli_anahtar123';
 
 const userSelectFields = {
   id: true,
@@ -37,19 +35,16 @@ const userSelectFields = {
   updatedAt: true,
 };
 
-
-// 🔹 Rastgele referans kodu üret
-const generateReferralCode = (): string => {
-  return uuidv4().slice(0, 8);
-};
+// Rastgele referans kodu
+const generateReferralCode = (): string => uuidv4().slice(0, 8);
 
 // ✅ Kayıt
-router.post("/register", async (req, res) => {
+router.post('/register', async (req: Request, res: Response) => {
   const {
     username,
     email,
     password,
-    role = "USER",
+    role = 'USER',
     firstName,
     lastName,
     phone,
@@ -58,35 +53,24 @@ router.post("/register", async (req, res) => {
   } = req.body;
 
   if (!username || !email || !password || !firstName || !lastName) {
-      return res.status(400).json({ success: false, message: "Tüm alanlar zorunludur." });
+    return res.status(400).json({ success: false, message: 'Tüm alanlar zorunludur.' });
   }
 
   try {
     const existingEmail = await prisma.user.findUnique({ where: { email } });
     if (existingEmail) {
-      return res.status(400).json({
-        success: false,
-        message: "Bu email zaten kayıtlı.",
-      });
+      return res.status(400).json({ success: false, message: 'Bu email zaten kayıtlı.' });
     }
 
     const existingUsername = await prisma.user.findUnique({ where: { username } });
     if (existingUsername) {
-      return res.status(400).json({
-        success: false,
-        message: "Bu kullanıcı adı zaten kayıtlı.",
-      });
+      return res.status(400).json({ success: false, message: 'Bu kullanıcı adı zaten kayıtlı.' });
     }
 
+    // benzersiz referralCode üret
     let referralCode = generateReferralCode();
-    let isUnique = false;
-    while (!isUnique) {
-      const existingRef = await prisma.user.findUnique({ where: { referralCode } });
-      if (existingRef) {
-        referralCode = generateReferralCode();
-      } else {
-        isUnique = true;
-      }
+    while (await prisma.user.findUnique({ where: { referralCode } })) {
+      referralCode = generateReferralCode();
     }
 
     let joinedReferralOwner: string | null = null;
@@ -95,10 +79,7 @@ router.post("/register", async (req, res) => {
         where: { referralCode: referredBy },
         select: { username: true },
       });
-
-      if (referredUser) {
-        joinedReferralOwner = referredUser.username;
-      }
+      if (referredUser) joinedReferralOwner = referredUser.username;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -117,52 +98,39 @@ router.post("/register", async (req, res) => {
         referredBy: referredBy ?? null,
         joinedReferralOwner,
       },
-      select: userSelectFields, // Kayıt sonrası da tüm user bilgilerini döndür
+      select: userSelectFields,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Kayıt başarılı",
-      user: user,
+      message: 'Kayıt başarılı',
+      user,
     });
   } catch (err) {
-    console.error("Kayıt hatası:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatası" });
+    console.error('Kayıt hatası:', err);
+    return res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
 // ✅ Giriş
-router.post("/login", async (req, res) => {
+router.post('/login', async (req: Request, res: Response) => {
   const { identifier, password } = req.body;
-console.log("🧪 [authRoutes] JWT_SECRET:", JWT_SECRET);
 
   try {
     const user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { username: identifier },
-          { email: identifier },
-        ],
+        OR: [{ username: identifier }, { email: identifier }],
       },
-      select: { // 🎉 Password'ı da seç, çünkü bcrypt.compare için gerekiyor
-        ...userSelectFields,
-        password: true, // Şifre alanını da dahil et
-      }
+      select: { ...userSelectFields, password: true },
     });
 
-    if (!user) {
-      return res.status(401).json({ success: false, message: "Kullanıcı adı/e-posta veya şifre yanlış." });
+    if (!user || !user.password) {
+      return res.status(401).json({ success: false, message: 'Kullanıcı adı/e-posta veya şifre yanlış.' });
     }
 
-    // user.password null veya undefined olabilir, kontrol et
-    if (!user.password) {
-        console.error("Login hatası: Kullanıcının şifresi veritabanında yok.", user.id);
-        return res.status(500).json({ success: false, message: "Şifre bilgisi eksik. Yöneticinizle iletişime geçin." });
-    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: "Kullanıcı adı/e-posta veya şifre yanlış." });
+      return res.status(401).json({ success: false, message: 'Kullanıcı adı/e-posta veya şifre yanlış.' });
     }
 
     const token = jwt.sign(
@@ -173,43 +141,43 @@ console.log("🧪 [authRoutes] JWT_SECRET:", JWT_SECRET);
         role: user.role,
       },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: '1h' }
     );
 
-    res.json({
+    // password'ı dışarı sızdırma
+    const { password: _omit, ...safeUser } = user as typeof user & { password?: string };
+
+    return res.json({
       success: true,
       token,
-      user: user, // Giriş sonrası tüm user objesini gönderiyoruz
+      user: safeUser,
     });
   } catch (err) {
-    console.error("Giriş hatası:", err);
-    res.status(500).json({ success: false, message: "Sunucu hatası" });
+    console.error('Giriş hatası:', err);
+    return res.status(500).json({ success: false, message: 'Sunucu hatası' });
   }
 });
 
-// ✅ /api/auth/me - Kimliği doğrulanmış kullanıcının profil bilgilerini getir
-console.log("📍 /me route'a gelindi");
-
-router.get("/me", authenticateToken, async (req: Request, res: Response) => {
-  // authenticateToken middleware'i req.user'ı set etmiş olmalı
-  if (!req.user || !req.user.userId) { // userId kullanıyorsanız
-    return res.status(401).json({ success: false, message: "Kullanıcı kimlik doğrulaması yapılamadı." });
+// ✅ /api/auth/me
+router.get('/me', authenticateToken, async (req: Request, res: Response) => {
+  if (!req.user?.userId) {
+    return res.status(401).json({ success: false, message: 'Kullanıcı kimlik doğrulaması yapılamadı.' });
   }
 
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      select: userSelectFields, // 🎉 Tüm gerekli alanları seç
+      select: userSelectFields,
     });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
     }
 
-    res.status(200).json({ success: true, user });
+    return res.status(200).json({ success: true, user });
   } catch (error) {
     console.error("'/me' endpoint hatası:", error);
-    res.status(500).json({ success: false, message: "Kullanıcı bilgileri alınırken sunucu hatası." });
+    return res.status(500).json({ success: false, message: 'Kullanıcı bilgileri alınırken sunucu hatası.' });
   }
 });
 
