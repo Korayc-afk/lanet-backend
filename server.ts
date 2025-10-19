@@ -1,5 +1,5 @@
 // src/server.ts
-import express from "express";
+import * as express from "express";
 import cors from "cors";
 import path from "path";
 import dotenv from "dotenv"; // .env dosyasını yüklemek için (EN BAŞTA OLMALI)
@@ -26,7 +26,7 @@ import sponsorRoutes from "./routes/sponsorRoutes";
 import promotionCardRoutes from "./routes/promotionCardRoutes";
 import videoCardRoutes from "./routes/videoCardRoutes"; //
 
-const app = express();
+const app = express.default();
 
 // Middleware'ler (Sırası önemlidir: CORS, JSON/URL parsing genelde en başta olur)
 app.use(
@@ -35,8 +35,8 @@ app.use(
     credentials: true, // Cookie / Authorization gibi şeyler için gerekli
   })
 ); // CORS ayarları
-app.use(express.json()); // JSON body parsing
-app.use(express.urlencoded({ extended: true })); // URL-encoded body parsing
+app.use(express.default.json()); 
+app.use(express.default.urlencoded({ extended: true })); 
 
 // 💡 Gelen tüm API çağrılarını logla (geliştirme için faydalı, isteğe bağlı)
 app.use((req, res, next) => {
@@ -47,8 +47,7 @@ app.use((req, res, next) => {
 // Statik uploads klasörü için doğru yol tanımlaması
 const uploadsPath = path.join(__dirname, "uploads"); // __dirname, server.ts dosyasının dizinidir.
 console.log("Statik uploads klasör yolu:", uploadsPath);
-app.use("/uploads", express.static(path.resolve("uploads")));
-
+app.use("/uploads", express.default.static(path.resolve("uploads"))); // <-- Değişiklik
 // API Rotaları (Tüm rotaları buraya ekleyin)
 // Genel olarak, daha spesifik rotalar (örn: /api/users/:id) daha genel rotalardan (örn: /api/users) önce gelmelidir.
 // Ancak Express'te app.use ile router eklerken, router içindeki sıralama önemlidir.
